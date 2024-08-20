@@ -99,7 +99,22 @@ app.get("/users", async (req, res) => {
   }
 });
 
-// Add task
+// Add Task
+app.post("/add-task", async (req, res) => {
+  const { deadline, description, priority, title, category, uId } = req.body;
+  const query =
+    "INSERT INTO tasks (deadline, description, priority, title, category, uId) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *";
+  const values = [deadline, description, priority, title, category, uId];
+  try {
+    const result = await pool.query(query, values);
+    res.send(result.rows[0]);
+  } catch (error) {
+    console.error("Error adding task:", error);
+    res.status(500).send({ message: "Internal server error" });
+  }
+});
+
+
 
 // Error handling middleware
 app.use((err, req, res, next) => {
