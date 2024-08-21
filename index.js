@@ -21,6 +21,8 @@ app.use(express.json());
 
 // Middleware to verify token
 const verifyToken = (req, res, next) => {
+  console.log(req.headers?.authorization);
+
   if (!req.headers?.authorization) {
     return res.status(401).send({ message: "Unauthorized access" });
   }
@@ -30,23 +32,10 @@ const verifyToken = (req, res, next) => {
       return res.status(401).send({ message: "Unauthorized access" });
     }
     req.decoded = decoded;
+    console.log(req.decoded == decoded);
     next();
   });
 };
-
-// Middleware to provide database connection
-app.use(async (req, res, next) => {
-  const client = await pool.connect();
-  req.dbClient = client;
-  try {
-    await client.query("SELECT NOW()"); // Dummy query to test connection
-    console.log("Database connected successfully");
-    next();
-  } catch (err) {
-    console.error("Database connection failed:", err);
-    res.status(500).send({ message: "Internal server error" });
-  }
-});
 
 // Confirm server is running
 app.get("/", (req, res) => {
@@ -81,7 +70,7 @@ app.post("/jwt", async (req, res) => {
 
 // Get users
 app.get("/users", async (req, res) => {
-  const client = req.dbClient;
+  const client = await pool.connect();
   try {
     const getUsersQuery = "SELECT * FROM users";
     const getUsersResult = await client.query(getUsersQuery);
@@ -100,21 +89,92 @@ app.get("/users", async (req, res) => {
 });
 
 // Add Task
-app.post("/add-task", async (req, res) => {
+app.post("/add-task", verifyToken, async (req, res) => {
   const { deadline, description, priority, title, category, uId } = req.body;
   const query =
     "INSERT INTO tasks (deadline, description, priority, title, category, uId) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *";
   const values = [deadline, description, priority, title, category, uId];
+  const client = await pool.connect();
   try {
-    const result = await pool.query(query, values);
-    res.send(result.rows[0]);
+    const result = await client.query(query, values);
+    res.send({ message: "Successfully Added!", data: result.rows[0] });
   } catch (error) {
     console.error("Error adding task:", error);
     res.status(500).send({ message: "Internal server error" });
+  } finally {
+    client.release();
   }
 });
 
+// Get tasks by user ID
+app.get("/tasks/:uid", verifyToken, async (req, res) => {
+  const { uid } = req.params;
+  const query = "SELECT * FROM tasks WHERE uId = $1";
+  const client = await pool.connect();
+  try {
+    const result = await client.query(query, [uid]);
+    res.send(result.rows);
+  } catch (error) {
+    console.error("Error fetching tasks:", error);
+    res.status(500).send({ message: "Internal server error" });
+  } finally {
+    client.release();
+  }
+});
 
+// Delete task by ID
+app.delete("/tasks/:id", verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const query = "DELETE FROM tasks WHERE id = $1 RETURNING *";
+  const client = await pool.connect();
+  try {
+    const result = await client.query(query, [id]);
+    res.status(200).json({ message: "Deleted Successfully!" });
+  } catch (error) {
+    console.error("Error deleting task:", error);
+    res.status(500).send({ message: "Internal server error" });
+  } finally {
+    client.release();
+  }
+});
+
+// Update task details
+app.put("/tasks/update-task/:id", verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const { deadline, description, priority, title } = req.body;
+  const query = `
+    UPDATE tasks
+    SET deadline = $1, description = $2, priority = $3, title = $4
+    WHERE id = $5 RETURNING *`;
+  const values = [deadline, description, priority, title, id];
+  const client = await pool.connect();
+  try {
+    const result = await client.query(query, values);
+    res.send(result.rows[0]);
+  } catch (error) {
+    console.error("Error updating task:", error);
+    res.status(500).send({ message: "Internal server error" });
+  } finally {
+    client.release();
+  }
+});
+
+// Update task category
+app.put("/tasks/update-task-category/:id", verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const { category } = req.body;
+  const query = "UPDATE tasks SET category = $1 WHERE id = $2 RETURNING *";
+  const client = await pool.connect();
+  try {
+    const result = await client.query(query, [category, id]);
+    res.send(result.rows[0]);
+  } catch (error) {
+    console.error("Error updating task category:", error);
+    res.status(500).send({ message: "Internal server error" });
+  } finally {
+    client.release();
+  }
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -129,7 +189,7 @@ const startServer = async () => {
     const client = await pool.connect();
     await client.query("SELECT NOW()");
     console.log("Database connected successfully");
-    client.release();
+    client.release(); // Release the client after checking
 
     // Start the server
     app.listen(port, () => {
