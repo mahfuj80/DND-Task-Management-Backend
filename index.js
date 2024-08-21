@@ -92,6 +92,35 @@ app.get("/users", async (req, res) => {
   }
 });
 
+// Post A single User
+app.post("/users", async (req, res) => {
+  const client = await pool.connect();
+  const { name, email, image } = req.body;
+
+  const insertUserQuery = `
+    INSERT INTO users (name, email, image)
+    VALUES ($1, $2, $3)
+    RETURNING *;
+  `;
+  const values = [name, email, image];
+
+  try {
+    const insertUserResult = await client.query(insertUserQuery, values);
+    res.send({ result: insertUserResult.rows[0], message: "success" });
+  } catch (error) {
+    console.error("Error adding user:", error);
+
+    if (error.code === "23505") {
+      // Handle unique violation error (e.g., if email already exists)
+      res.status(409).send({ message: "Email already exists" });
+    } else {
+      res.status(500).send({ message: "Internal server error" });
+    }
+  } finally {
+    client.release();
+  }
+});
+
 // Add Task
 app.post("/add-task", verifyToken, async (req, res) => {
   const { deadline, description, priority, title, category, uId } = req.body;
