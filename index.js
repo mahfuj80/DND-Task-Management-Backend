@@ -112,7 +112,7 @@ app.post("/users", async (req, res) => {
 
     if (error.code === "23505") {
       // Handle unique violation error (e.g., if email already exists)
-      res.status(409).send({ message: "Email already exists" });
+      res.status(200).send({ message: "success" });
     } else {
       res.status(500).send({ message: "Internal server error" });
     }
