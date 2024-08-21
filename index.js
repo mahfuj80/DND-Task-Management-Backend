@@ -121,6 +121,57 @@ app.post("/users", async (req, res) => {
   }
 });
 
+// Add Board
+app.post("/category", async (req, res) => {
+  const client = await pool.connect();
+  const { id, boardName } = req.body;
+
+  const insertCategoryQuery = `
+    INSERT INTO category (id, boardName)
+    VALUES ($1, $2)
+    RETURNING *;
+  `;
+  const values = [id, boardName];
+
+  try {
+    const insertCategoryResult = await client.query(
+      insertCategoryQuery,
+      values
+    );
+    res.send(insertCategoryResult.rows[0]);
+  } catch (error) {
+    console.error("Error adding category:", error);
+
+    if (error.code === "23505") {
+      // Handle unique violation error (e.g., if id already exists)
+      res.status(409).send({ message: "Category ID already exists" });
+    } else {
+      res.status(500).send({ message: "Internal server error" });
+    }
+  } finally {
+    client.release();
+  }
+});
+
+app.get("/category", async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const getCategoriesQuery = "SELECT * FROM category";
+    const getCategoriesResult = await client.query(getCategoriesQuery);
+
+    if (getCategoriesResult.rows.length === 0) {
+      return res.status(404).send({ message: "No categories found" });
+    }
+
+    res.send(getCategoriesResult.rows);
+  } catch (error) {
+    console.error("Error fetching categories:", error);
+    res.status(500).send({ message: "Internal server error" });
+  } finally {
+    client.release();
+  }
+});
+
 // Add Task
 app.post("/add-task", verifyToken, async (req, res) => {
   const { deadline, description, priority, title, category, uId } = req.body;
