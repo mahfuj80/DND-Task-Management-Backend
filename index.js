@@ -292,18 +292,32 @@ app.put("/tasks/update-task-category/:uid", verifyToken, async (req, res) => {
     const deleteQuery = "DELETE FROM newTasks WHERE uid = $1";
     await client.query(deleteQuery, [uid]);
 
-    // Insert the updated tasks
+    // Prepare the insert query
     const insertQuery =
       "INSERT INTO newTasks (title, description, category, priority, deadline, uid) VALUES ($1, $2, $3, $4, $5, $6)";
+
+    // Validate and insert each task
     for (let i = 0; i < newTasks.length; i++) {
       const task = newTasks[i];
+
+      // Validate task data (additional validation can be added as needed)
+      if (
+        !task.title ||
+        !task.description ||
+        !task.category ||
+        !task.priority ||
+        !task.deadline
+      ) {
+        throw new Error("Invalid task data");
+      }
+
       await client.query(insertQuery, [
         task.title,
         task.description,
         task.category,
         task.priority,
         task.deadline,
-        uid, // Use the same uid for each task
+        uid,
       ]);
     }
 
