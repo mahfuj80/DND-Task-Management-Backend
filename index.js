@@ -277,18 +277,45 @@ app.put("/tasks/update-task/:id", verifyToken, async (req, res) => {
 });
 
 // Update task category
-app.put("/tasks/update-task-category/:id", verifyToken, async (req, res) => {
-  const { id } = req.params;
-  console.log(id);
+app.put("/tasks/update-task-category/:uid", verifyToken, async (req, res) => {
+  const { uid } = req.params;
+  const { tasks } = req.body; // Expecting an array of tasks in the body
 
-  const { category } = req.body;
-  const query = "UPDATE tasks SET category = $1 WHERE id = $2 RETURNING *";
+  if (!Array.isArray(tasks) || tasks.length === 0) {
+    return res.status(400).send({ message: "Invalid task data provided" });
+  }
+
   const client = await pool.connect();
+
   try {
-    const result = await client.query(query, [category, id]);
-    res.send(result.rows[0]);
+    await client.query("BEGIN");
+
+    // Delete existing tasks with the same uid
+    const deleteQuery = "DELETE FROM tasks WHERE uid = $1";
+    await client.query(deleteQuery, [uid]);
+
+    // Insert the updated tasks
+    const insertQuery =
+      "INSERT INTO tasks (id, title, description, category, priority, deadline, uid) VALUES ($1, $2, $3, $4, $5, $6, $7)";
+    for (let i = 0; i < tasks.length; i++) {
+      const task = tasks[i];
+      await client.query(insertQuery, [
+        task.id,
+        task.title,
+        task.description,
+        task.category,
+        task.priority,
+        task.deadline,
+        uid, // Use the same uid for each task
+      ]);
+    }
+
+    await client.query("COMMIT");
+
+    res.send({ message: "Tasks updated successfully" });
   } catch (error) {
-    console.error("Error updating task category:", error);
+    await client.query("ROLLBACK");
+    console.error("Error updating tasks:", error);
     res.status(500).send({ message: "Internal server error" });
   } finally {
     client.release();
