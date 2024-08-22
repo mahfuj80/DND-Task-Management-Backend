@@ -279,9 +279,9 @@ app.put("/tasks/update-task/:id", verifyToken, async (req, res) => {
 // Update task category
 app.put("/tasks/update-task-category/:uid", verifyToken, async (req, res) => {
   const { uid } = req.params;
-  const { tasks } = req.body; // Expecting an array of tasks in the body
+  const { newTasks } = req.body; // Expecting an array of tasks in the body
 
-  if (!Array.isArray(tasks) || tasks.length === 0) {
+  if (!Array.isArray(newTasks) || newTasks.length === 0) {
     return res.status(400).send({ message: "Invalid task data provided" });
   }
 
@@ -290,15 +290,15 @@ app.put("/tasks/update-task-category/:uid", verifyToken, async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    // Delete existing tasks with the same uid
-    const deleteQuery = "DELETE FROM tasks WHERE uid = $1";
+    // Delete existing newTasks with the same uid
+    const deleteQuery = "DELETE FROM newTasks WHERE uid = $1";
     await client.query(deleteQuery, [uid]);
 
-    // Insert the updated tasks
+    // Insert the updated newTasks
     const insertQuery =
-      "INSERT INTO tasks (id, title, description, category, priority, deadline, uid) VALUES ($1, $2, $3, $4, $5, $6, $7)";
-    for (let i = 0; i < tasks.length; i++) {
-      const task = tasks[i];
+      "INSERT INTO newTasks (id, title, description, category, priority, deadline, uid) VALUES ($1, $2, $3, $4, $5, $6, $7)";
+    for (let i = 0; i < newTasks.length; i++) {
+      const task = newTasks[i];
       await client.query(insertQuery, [
         task.id,
         task.title,
