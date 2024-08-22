@@ -178,13 +178,13 @@ app.delete("/categories/:id", verifyToken, async (req, res) => {
     const deleteTasksQuery = `
       DELETE FROM tasks
       WHERE category = (
-        SELECT boardname FROM board WHERE id = $1
+        SELECT boardname FROM category WHERE id = $1
       )`;
     await client.query(deleteTasksQuery, [id]);
 
     // Delete the board itself
     const deleteBoardQuery = `
-      DELETE FROM board
+      DELETE FROM category
       WHERE id = $1`;
     await client.query(deleteBoardQuery, [id]);
 
