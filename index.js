@@ -73,7 +73,7 @@ app.post("/jwt", async (req, res) => {
 });
 
 // Get users
-app.get("/users", async (req, res) => {
+app.get("/users", verifyToken, async (req, res) => {
   const client = await pool.connect();
   try {
     const getUsersQuery = "SELECT * FROM users";
@@ -122,7 +122,7 @@ app.post("/users", async (req, res) => {
 });
 
 // Add Board
-app.post("/categories", async (req, res) => {
+app.post("/categories", verifyToken, async (req, res) => {
   const { id, boardName, uid } = req.body;
 
   // Check if the required fields are provided
@@ -148,7 +148,7 @@ app.post("/categories", async (req, res) => {
 });
 
 // Get Board By uid
-app.get("/categories/:uid", async (req, res) => {
+app.get("/categories/:uid", verifyToken, async (req, res) => {
   const { uid } = req.params;
   const query = "SELECT * FROM category WHERE uid = $1";
 
@@ -169,7 +169,7 @@ app.get("/categories/:uid", async (req, res) => {
 });
 
 // Delete Board and All The Task of the board
-app.delete("/board/:id", verifyToken, async (req, res) => {
+app.delete("/categories/:id", verifyToken, async (req, res) => {
   const { id } = req.params;
   const client = await pool.connect();
 
