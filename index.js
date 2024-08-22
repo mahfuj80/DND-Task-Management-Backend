@@ -46,8 +46,6 @@ app.get("/", (req, res) => {
   res.send("DND Task Management is running...");
 });
 
-// Routes
-
 // Generate JWT
 app.post("/jwt", async (req, res) => {
   try {
@@ -290,17 +288,16 @@ app.put("/tasks/update-task-category/:uid", verifyToken, async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    // Delete existing newTasks with the same uid
+    // Delete existing tasks with the same uid
     const deleteQuery = "DELETE FROM newTasks WHERE uid = $1";
     await client.query(deleteQuery, [uid]);
 
-    // Insert the updated newTasks
+    // Insert the updated tasks
     const insertQuery =
-      "INSERT INTO newTasks (id, title, description, category, priority, deadline, uid) VALUES ($1, $2, $3, $4, $5, $6, $7)";
+      "INSERT INTO newTasks (title, description, category, priority, deadline, uid) VALUES ($1, $2, $3, $4, $5, $6)";
     for (let i = 0; i < newTasks.length; i++) {
       const task = newTasks[i];
       await client.query(insertQuery, [
-        task.id,
         task.title,
         task.description,
         task.category,
