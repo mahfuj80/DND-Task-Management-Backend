@@ -147,6 +147,7 @@ app.post("/categories", async (req, res) => {
   }
 });
 
+// Get Board By uid
 app.get("/categories/:uid", async (req, res) => {
   const { uid } = req.params;
   const query = "SELECT * FROM category WHERE uid = $1";
@@ -164,6 +165,37 @@ app.get("/categories/:uid", async (req, res) => {
   } catch (error) {
     console.error("Error fetching categories by UID:", error);
     res.status(500).send({ message: "Internal server error" });
+  }
+});
+
+// Delete Board and All The Task of the board
+app.delete("/board/:id", verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const client = await pool.connect();
+
+  try {
+    // Delete all tasks associated with the board
+    const deleteTasksQuery = `
+      DELETE FROM tasks
+      WHERE category = (
+        SELECT boardname FROM board WHERE id = $1
+      )`;
+    await client.query(deleteTasksQuery, [id]);
+
+    // Delete the board itself
+    const deleteBoardQuery = `
+      DELETE FROM board
+      WHERE id = $1`;
+    await client.query(deleteBoardQuery, [id]);
+
+    res
+      .status(200)
+      .send({ message: "Board and associated tasks deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting board and tasks:", error);
+    res.status(500).send({ message: "Internal server error" });
+  } finally {
+    client.release();
   }
 });
 
@@ -247,6 +279,8 @@ app.put("/tasks/update-task/:id", verifyToken, async (req, res) => {
 // Update task category
 app.put("/tasks/update-task-category/:id", verifyToken, async (req, res) => {
   const { id } = req.params;
+  console.log(id);
+
   const { category } = req.body;
   const query = "UPDATE tasks SET category = $1 WHERE id = $2 RETURNING *";
   const client = await pool.connect();
