@@ -220,15 +220,21 @@ app.delete("/tasks/:id", verifyToken, async (req, res) => {
 // Update task details
 app.put("/tasks/update-task/:id", verifyToken, async (req, res) => {
   const { id } = req.params;
-  const { deadline, description, priority, title } = req.body;
+  const { deadline, description, priority, title, category } = req.body;
+
+  // Include category in the SQL query
   const query = `
     UPDATE tasks
-    SET deadline = $1, description = $2, priority = $3, title = $4
-    WHERE id = $5 RETURNING *`;
-  const values = [deadline, description, priority, title, id];
+    SET deadline = $1, description = $2, priority = $3, title = $4, category = $5
+    WHERE id = $6 RETURNING *`;
+
+  const values = [deadline, description, priority, title, category, id];
+
   const client = await pool.connect();
   try {
     const result = await client.query(query, values);
+
+    // Send the updated task as response
     res.send(result.rows[0]);
   } catch (error) {
     console.error("Error updating task:", error);
