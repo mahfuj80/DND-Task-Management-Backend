@@ -122,53 +122,48 @@ app.post("/users", async (req, res) => {
 });
 
 // Add Board
-app.post("/category", async (req, res) => {
-  const client = await pool.connect();
-  const { id, boardName } = req.body;
+app.post("/categories", async (req, res) => {
+  const { id, boardName, uid } = req.body;
 
-  const insertCategoryQuery = `
-    INSERT INTO category (id, boardName)
-    VALUES ($1, $2)
-    RETURNING *;
-  `;
-  const values = [id, boardName];
+  // Check if the required fields are provided
+  if (!id || !boardName || !uid) {
+    return res
+      .status(400)
+      .send({ message: "id, boardName, and uid are required" });
+  }
+
+  const query = `
+    INSERT INTO category (id, boardName, uid)
+    VALUES ($1, $2, $3)
+    RETURNING *`;
+  const values = [id, boardName, uid];
 
   try {
-    const insertCategoryResult = await client.query(
-      insertCategoryQuery,
-      values
-    );
-    res.send(insertCategoryResult.rows[0]);
+    const result = await pool.query(query, values);
+    res.status(201).send(result.rows[0]);
   } catch (error) {
     console.error("Error adding category:", error);
-
-    if (error.code === "23505") {
-      // Handle unique violation error (e.g., if id already exists)
-      res.status(409).send({ message: "Category ID already exists" });
-    } else {
-      res.status(500).send({ message: "Internal server error" });
-    }
-  } finally {
-    client.release();
+    res.status(500).send({ message: "Internal server error" });
   }
 });
 
-app.get("/category", async (req, res) => {
-  const client = await pool.connect();
-  try {
-    const getCategoriesQuery = "SELECT * FROM category";
-    const getCategoriesResult = await client.query(getCategoriesQuery);
+app.get("/categories/:uid", async (req, res) => {
+  const { uid } = req.params;
+  const query = "SELECT * FROM category WHERE uid = $1";
 
-    if (getCategoriesResult.rows.length === 0) {
-      return res.status(404).send({ message: "No categories found" });
+  try {
+    const result = await pool.query(query, [uid]);
+
+    if (result.rows.length === 0) {
+      return res
+        .status(404)
+        .send({ message: "No categories found for this UID" });
     }
 
-    res.send(getCategoriesResult.rows);
+    res.send(result.rows);
   } catch (error) {
-    console.error("Error fetching categories:", error);
+    console.error("Error fetching categories by UID:", error);
     res.status(500).send({ message: "Internal server error" });
-  } finally {
-    client.release();
   }
 });
 
