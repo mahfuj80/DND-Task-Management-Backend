@@ -289,12 +289,12 @@ app.put("/tasks/update-task-category/:uid", verifyToken, async (req, res) => {
     await client.query("BEGIN");
 
     // Delete existing tasks with the same uid
-    const deleteQuery = "DELETE FROM newTasks WHERE uid = $1";
+    const deleteQuery = "DELETE FROM tasks WHERE uid = $1";
     await client.query(deleteQuery, [uid]);
 
     // Prepare the insert query
     const insertQuery =
-      "INSERT INTO newTasks (title, description, category, priority, deadline, uid) VALUES ($1, $2, $3, $4, $5, $6)";
+      "INSERT INTO tasks (title, description, category, priority, deadline, uid) VALUES ($1, $2, $3, $4, $5, $6)";
 
     // Validate and insert each task
     for (let i = 0; i < newTasks.length; i++) {
